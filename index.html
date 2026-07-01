@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Add to Home Screen -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Subs">
+<meta name="theme-color" content="#0d0f14">
+<meta name="format-detection" content="telephone=no">
+<title>Subscriptions</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#0d0f14;
+    --surface:#161a22;
+    --surface-2:#1e232d;
+    --border:#2a2f3a;
+    --text:#eceef4;
+    --muted:#9aa1b2;
+    --accent:#7c6cff;
+    --accent-press:#6a59f0;
+    --good:#4fd1a1;
+    --warn:#ffb454;
+    --danger:#ff6b6b;
+    --radius:16px;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; }
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:600px;
+    margin:0 auto;
+    padding:calc(env(safe-area-inset-top) + 22px) calc(env(safe-area-inset-right) + 16px)
+            calc(env(safe-area-inset-bottom) + 40px) calc(env(safe-area-inset-left) + 16px);
+  }
+  [hidden]{ display:none !important; }
+
+  header h1{ font-size:26px; margin:0; letter-spacing:-.02em; }
+  header p{ margin:4px 0 0; color:var(--muted); font-size:14px; }
+
+  /* Summary */
+  .summary{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:20px 0; }
+  .tile{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:16px;
+  }
+  .tile-label{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+  .tile-value{ font-size:26px; font-weight:700; margin-top:6px; letter-spacing:-.02em; }
+  .tile:first-child .tile-value{ color:var(--accent); }
+  .tile:last-child  .tile-value{ color:var(--good); }
+
+  /* Buttons */
+  .btn{ font-size:16px; font-weight:600; border:none; border-radius:14px; padding:14px 16px; cursor:pointer; color:#fff; }
+  .btn-primary{ background:var(--accent); }
+  .btn-primary:active{ background:var(--accent-press); }
+  .btn-block{ width:100%; }
+  .btn-ghost{ background:transparent; color:var(--muted); border:1px solid var(--border); }
+
+  /* Form panel */
+  .panel{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:16px; margin-top:16px;
+  }
+  .panel h2{ margin:0 0 14px; font-size:17px; }
+  .field{ margin-bottom:14px; }
+  .field:last-of-type{ margin-bottom:0; }
+  .lbl{ display:block; font-size:13px; color:var(--muted); margin-bottom:6px; }
+  input[type=text],input[type=number],input[type=date]{
+    width:100%; padding:13px 14px; font-size:16px; /* 16px stops iOS zoom-on-focus */
+    background:var(--surface-2); color:var(--text);
+    border:1px solid var(--border); border-radius:12px; outline:none;
+  }
+  input:focus{ border-color:var(--accent); }
+  .row2{ display:grid; grid-template-columns:1fr 92px; gap:12px; }
+
+  /* Segmented cycle control */
+  .segment{ display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:12px; }
+  .segment input{ position:absolute; opacity:0; pointer-events:none; }
+  .segment label{ text-align:center; padding:10px; border-radius:9px; cursor:pointer;
+    color:var(--muted); font-weight:600; font-size:15px; }
+  .segment input:checked + label{ background:var(--accent); color:#fff; }
+
+  .form-actions{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px; }
+
+  /* List */
+  .list-head{ display:flex; align-items:center; gap:10px; margin:26px 0 12px; }
+  .list-head h2{ font-size:15px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0; }
+  .count{ font-size:12px; color:var(--muted); background:var(--surface-2);
+    border:1px solid var(--border); border-radius:999px; padding:2px 9px; }
+
+  .card{
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:14px 16px; margin-bottom:12px;
+  }
+  .card.soon{ border-color:rgba(255,180,84,.55); box-shadow:inset 3px 0 0 var(--warn); }
+  .card-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  .card-name{ font-weight:600; font-size:17px; }
+  .card-sub{ margin-top:5px; color:var(--muted); font-size:14px; }
+  .badge{ font-size:12px; font-weight:600; white-space:nowrap; color:var(--accent);
+    background:rgba(124,108,255,.14); border-radius:999px; padding:4px 10px; }
+  .badge-soon{ color:var(--warn); background:rgba(255,180,84,.15); }
+  .card-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+  .mini{ font-size:13px; font-weight:600; padding:7px 14px; border-radius:10px;
+    background:var(--surface-2); color:var(--text); border:1px solid var(--border); cursor:pointer; }
+  .mini.danger{ color:var(--danger); }
+
+  .empty{ text-align:center; color:var(--muted); padding:34px 10px; border:1px dashed var(--border); border-radius:var(--radius); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Subscriptions</h1>
+    <p>Your recurring costs at a glance</p>
+  </header>
+
+  <section class="summary" aria-label="Cost summary">
+    <div class="tile">
+      <div class="tile-label">Per month</div>
+      <div class="tile-value" id="totMonthly">$0.00</div>
+    </div>
+    <div class="tile">
+      <div class="tile-label">Per year</div>
+      <div class="tile-value" id="totYearly">$0.00</div>
+    </div>
+  </section>
+
+  <button id="addBtn" class="btn btn-primary btn-block">+ Add subscription</button>
+
+  <section id="formPanel" class="panel" hidden>
+    <h2 id="formTitle">Add subscription</h2>
+    <form id="subForm">
+      <div class="field">
+        <label class="lbl" for="f-name">Name</label>
+        <input id="f-name" type="text" required maxlength="60" autocomplete="off" placeholder="e.g. Netflix">
+      </div>
+      <div class="field">
+        <label class="lbl" for="f-cost">Cost</label>
+        <div class="row2">
+          <input id="f-cost" type="number" inputmode="decimal" step="0.01" min="0" required placeholder="0.00">
+          <input id="f-cur" type="text" maxlength="4" value="AUD" aria-label="Currency label">
+        </div>
+      </div>
+      <div class="field">
+        <label class="lbl">Billing cycle</label>
+        <div class="segment">
+          <input type="radio" name="cycle" id="cyc-m" value="monthly" checked>
+          <label for="cyc-m">Monthly</label>
+          <input type="radio" name="cycle" id="cyc-y" value="yearly">
+          <label for="cyc-y">Yearly</label>
+        </div>
+      </div>
+      <div class="field">
+        <label class="lbl" for="f-next">Next payment</label>
+        <input id="f-next" type="date" required>
+      </div>
+      <div class="form-actions">
+        <button type="button" id="cancelBtn" class="btn btn-ghost">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </section>
+
+  <div class="list-head">
+    <h2>All subscriptions</h2>
+    <span class="count" id="count">0</span>
+  </div>
+  <div id="list"></div>
+  <p id="empty" class="empty" hidden>No subscriptions yet.<br>Tap “Add subscription” to start.</p>
+</div>
+
+<script>
+"use strict";
+const KEY = "subtracker.subs.v1";
+const MS_DAY = 86400000;
+
+/* ---------- date helpers (all local-midnight, timezone-safe) ---------- */
+const pad = n => String(n).padStart(2, "0");
+const toISO = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+function parseISO(s){ const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); }
+function daysInMonth(y, m){ return new Date(y, m+1, 0).getDate(); }   // m is 0-based
+function startOfToday(){ const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
+
+/* Advance one billing cycle. anchorDay is the *intended* day-of-month the user
+   chose (e.g. 31). We rebuild the day from the anchor each step and clamp it to
+   the target month's length — so a payment on the 31st lands on the last day of
+   short months yet returns to the 31st in long ones, and Feb 29 handles leap
+   years automatically. */
+function addCycle(date, cycle, anchorDay){
+  let y = date.getFullYear(), m = date.getMonth();
+  if(cycle === "yearly"){ y += 1; }
+  else { m += 1; if(m > 11){ m = 0; y += 1; } }
+  return new Date(y, m, Math.min(anchorDay, daysInMonth(y, m)));
+}
+
+/* Roll a subscription's next-payment date forward until it is today or later. */
+function rolledDate(sub){
+  const today = startOfToday();
+  let date = parseISO(sub.next), guard = 0;
+  while(date < today && guard++ < 100000){
+    date = addCycle(date, sub.cycle, sub.anchorDay);
+  }
+  return date;
+}
+
+function daysUntil(iso){ return Math.round((parseISO(iso) - startOfToday()) / MS_DAY); }
+function dueLabel(days){
+  if(days <= 0) return "Due today";
+  if(days === 1) return "Tomorrow";
+  return `in ${days} days`;
+}
+function fmtDate(iso){
+  return parseISO(iso).toLocaleDateString("en-AU",
+    { weekday:"short", day:"numeric", month:"short", year:"numeric" });
+}
+function money(n){ return "$" + n.toLocaleString("en-AU", { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+function esc(s){ return String(s).replace(/[&<>"']/g, c =>
+  ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+/* ---------- data ---------- */
+function mkSub(name, cost, currency, cycle, next){
+  return {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    name, cost: Number(cost), currency: (currency || "AUD"), cycle, next,
+    anchorDay: parseISO(next).getDate()
+  };
+}
+function load(){
+  const raw = localStorage.getItem(KEY);
+  if(raw === null){                                  // first run — seed starting data
+    const seed = [
+      mkSub("Spotify", 15.99, "AUD", "monthly", "2026-07-07"),
+      mkSub("TickTick", 52, "AUD", "yearly", "2026-12-15")
+    ];
+    localStorage.setItem(KEY, JSON.stringify(seed));
+    return seed;
+  }
+  try { const a = JSON.parse(raw); return Array.isArray(a) ? a : []; }
+  catch { return []; }
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(subs)); }
+
+/* Ensure every sub has an anchorDay and a next-payment date that isn't in the past. */
+function normalize(){
+  let changed = false;
+  for(const s of subs){
+    if(typeof s.anchorDay !== "number" || !s.anchorDay){ s.anchorDay = parseISO(s.next).getDate(); changed = true; }
+    const rolled = toISO(rolledDate(s));
+    if(rolled !== s.next){ s.next = rolled; changed = true; }
+  }
+  return changed;
+}
+function totals(){
+  let monthly = 0, yearly = 0;
+  for(const s of subs){
+    if(s.cycle === "monthly"){ monthly += s.cost; yearly += s.cost * 12; }
+    else { yearly += s.cost; monthly += s.cost / 12; }
+  }
+  return { monthly, yearly };
+}
+
+/* ---------- rendering ---------- */
+let subs = load();
+let editingId = null;
+
+const $ = id => document.getElementById(id);
+const listEl = $("list"), emptyEl = $("empty"), countEl = $("count");
+const panel = $("formPanel"), addBtn = $("addBtn"), form = $("subForm"), formTitle = $("formTitle");
+const nameEl = $("f-name"), costEl = $("f-cost"), curEl = $("f-cur"), nextEl = $("f-next");
+
+function render(){
+  if(normalize()) save();
+
+  const t = totals();
+  $("totMonthly").textContent = money(t.monthly);
+  $("totYearly").textContent  = money(t.yearly);
+  countEl.textContent = subs.length;
+
+  const sorted = [...subs].sort((a, b) => a.next < b.next ? -1 : a.next > b.next ? 1 : 0);
+  emptyEl.hidden = sorted.length > 0;
+
+  listEl.innerHTML = sorted.map(s => {
+    const days = daysUntil(s.next);
+    const soon = days <= 3;
+    const amount = money(s.cost) + (s.currency && s.currency !== "AUD" ? " " + esc(s.currency) : "");
+    return `<article class="card${soon ? " soon" : ""}" data-id="${s.id}">
+      <div class="card-row">
+        <span class="card-name">${esc(s.name)}</span>
+        <span class="badge${soon ? " badge-soon" : ""}">${dueLabel(days)}</span>
+      </div>
+      <div class="card-row card-sub">
+        <span>${amount} · ${s.cycle === "monthly" ? "Monthly" : "Yearly"}</span>
+        <span>${fmtDate(s.next)}</span>
+      </div>
+      <div class="card-actions">
+        <button class="mini" data-act="edit">Edit</button>
+        <button class="mini danger" data-act="del">Delete</button>
+      </div>
+    </article>`;
+  }).join("");
+}
+
+/* ---------- form open/close ---------- */
+function openForm(id){
+  editingId = id || null;
+  if(editingId){
+    const s = subs.find(x => x.id === editingId);
+    formTitle.textContent = "Edit subscription";
+    nameEl.value = s.name;
+    costEl.value = s.cost;
+    curEl.value  = s.currency;
+    form.cycle.value = s.cycle;
+    nextEl.value = s.next;
+  } else {
+    formTitle.textContent = "Add subscription";
+    form.reset();
+    curEl.value = "AUD";
+    form.cycle.value = "monthly";
+    nextEl.value = toISO(startOfToday());   // sensible default
+  }
+  panel.hidden = false;
+  addBtn.hidden = true;
+  nameEl.focus();
+  panel.scrollIntoView({ behavior:"smooth", block:"nearest" });
+}
+function closeForm(){ panel.hidden = true; addBtn.hidden = false; editingId = null; }
+
+/* ---------- events ---------- */
+addBtn.addEventListener("click", () => openForm());
+$("cancelBtn").addEventListener("click", closeForm);
+
+form.addEventListener("submit", e => {
+  e.preventDefault();
+  if(!form.reportValidity()) return;
+  const name = nameEl.value.trim();
+  const cost = parseFloat(costEl.value);
+  const currency = (curEl.value.trim() || "AUD").toUpperCase();
+  const cycle = form.cycle.value;
+  const next = nextEl.value;
+  if(!name || isNaN(cost) || !next) return;
+
+  if(editingId){
+    const s = subs.find(x => x.id === editingId);
+    Object.assign(s, { name, cost, currency, cycle, next, anchorDay: parseISO(next).getDate() });
+  } else {
+    subs.push(mkSub(name, cost, currency, cycle, next));
+  }
+  save(); render(); closeForm();
+});
+
+listEl.addEventListener("click", e => {
+  const btn = e.target.closest("button[data-act]");
+  if(!btn) return;
+  const id = e.target.closest("[data-id]").dataset.id;
+  if(btn.dataset.act === "edit"){ openForm(id); return; }
+  const s = subs.find(x => x.id === id);
+  if(s && confirm(`Delete “${s.name}”?`)){
+    subs = subs.filter(x => x.id !== id);
+    if(editingId === id) closeForm();
+    save(); render();
+  }
+});
+
+// Keep "days remaining" / roll-forward fresh if the app is left open past midnight.
+document.addEventListener("visibilitychange", () => { if(!document.hidden) render(); });
+
+/* ---------- home-screen icon (generated so the file stays self-contained) ---------- */
+function setupIcon(){
+  try{
+    const c = document.createElement("canvas");
+    c.width = c.height = 512;
+    const g = c.getContext("2d");
+    const grad = g.createLinearGradient(0, 0, 512, 512);
+    grad.addColorStop(0, "#8b5cff"); grad.addColorStop(1, "#5b7cff");
+    g.fillStyle = grad; g.fillRect(0, 0, 512, 512);
+    g.fillStyle = "#fff";
+    g.font = "700 300px -apple-system, system-ui, sans-serif";
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("$", 256, 280);
+    const png = c.toDataURL("image/png");
+
+    const link = (rel, href) => {
+      const l = document.createElement("link");
+      l.rel = rel; l.href = href; document.head.appendChild(l);
+    };
+    link("apple-touch-icon", png);
+    link("icon", png);
+
+    const base = location.href.split(/[?#]/)[0];
+    const manifest = {
+      name:"Subscriptions", short_name:"Subs",
+      start_url: base, scope: base.replace(/[^/]*$/, ""),
+      display:"standalone", background_color:"#0d0f14", theme_color:"#0d0f14",
+      icons:[
+        { src:png, sizes:"512x512", type:"image/png", purpose:"any" },
+        { src:png, sizes:"512x512", type:"image/png", purpose:"maskable" }
+      ]
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type:"application/manifest+json" }));
+    link("manifest", url);
+  }catch(_){ /* icon is a nice-to-have; ignore if unsupported */ }
+}
+
+setupIcon();
+render();
+</script>
+</body>
+</html>
