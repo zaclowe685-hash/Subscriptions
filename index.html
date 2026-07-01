@@ -56,9 +56,10 @@
   .tab.active::after{ content:""; position:absolute; left:14px; right:14px; bottom:-1px; height:3px;
     border-radius:3px; background:var(--accent); }
 
-  .panel{ padding-top:18px; }
-  @keyframes slideIn{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
-  .panel.slideIn{ animation:slideIn .22s ease; }
+  .pager{ overflow:hidden; }
+  .track{ display:flex; width:200%; transition:transform .32s cubic-bezier(.22,.61,.36,1); will-change:transform; }
+  .track.dragging{ transition:none; }
+  .panel{ flex:0 0 50%; width:50%; align-self:flex-start; padding-top:18px; }
 
   /* Summary + stat tiles */
   .summary,.stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
@@ -155,7 +156,8 @@
     <button class="tab" data-tab="1" role="tab">Insights</button>
   </div>
 
-  <div id="panels">
+  <div id="pager" class="pager">
+   <div id="track" class="track">
     <!-- ================= TAB 0: Subscriptions ================= -->
     <section class="panel" data-panel="0" role="tabpanel">
       <section class="summary" aria-label="Cost summary">
@@ -220,9 +222,10 @@
     </section>
 
     <!-- ================= TAB 1: Insights ================= -->
-    <section class="panel" data-panel="1" role="tabpanel" hidden>
+    <section class="panel" data-panel="1" role="tabpanel">
       <div id="insights"></div>
     </section>
+   </div>
   </div>
 </div>
 
@@ -337,6 +340,7 @@ const $ = id => document.getElementById(id);
 const listEl = $("list"), emptyEl = $("empty"), countEl = $("count");
 const panel = $("formPanel"), addBtn = $("addBtn"), form = $("subForm"), formTitle = $("formTitle");
 const nameEl = $("f-name"), costEl = $("f-cost"), curEl = $("f-cur"), nextEl = $("f-next");
+const pager = $("pager"), track = $("track");
 
 /* ---------- render: subscriptions list ---------- */
 function render(){
@@ -374,6 +378,7 @@ function render(){
   }).join("");
 
   renderInsights();
+  setPagerHeight();
 }
 
 /* ---------- render: insights charts ---------- */
@@ -448,33 +453,66 @@ function renderInsights(){
     <div class="chart-card"><h3>Billing cycle progress</h3>${progBars}</div>`;
 }
 
-/* ---------- tabs + swipe ---------- */
+/* ---------- tabs + swipe pager (finger-tracking) ---------- */
+function panelMaxHeight(){ return Math.max(track.children[0].offsetHeight, track.children[1].offsetHeight); }
+function setPagerHeight(h){ pager.style.height = (h != null ? h : track.children[tab].offsetHeight) + "px"; }
+
 function setTab(i){
-  i = Math.max(0, Math.min(1, i));
-  if(i === tab) return;
+  i = Math.max(0, Math.min(track.children.length - 1, i));
+  const changed = i !== tab;
   tab = i;
+  track.style.transform = `translateX(-${i * 50}%)`;
   document.querySelectorAll(".tab").forEach((t, idx) => t.classList.toggle("active", idx === i));
-  document.querySelectorAll(".panel").forEach((p, idx) => {
-    const active = idx === i;
-    p.hidden = !active;
-    if(active){ p.classList.remove("slideIn"); void p.offsetWidth; p.classList.add("slideIn"); }
-  });
-  window.scrollTo({ top:0, behavior:"smooth" });
+  setPagerHeight(panelMaxHeight());                    // hold tallest during the slide so nothing clips
+  clearTimeout(setTab._t);
+  setTab._t = setTimeout(() => setPagerHeight(), 340); // settle to the active panel's height
+  if(changed) window.scrollTo({ top:0, behavior:"smooth" });
 }
 document.querySelectorAll(".tab").forEach(t =>
   t.addEventListener("click", () => setTab(Number(t.dataset.tab))));
 
-const panelsEl = $("panels");
-let sx = 0, sy = 0, tracking = false;
-panelsEl.addEventListener("touchstart", e => {
-  if(e.target.closest("input,textarea,select,button,a,label")){ tracking = false; return; }
-  const t = e.touches[0]; sx = t.clientX; sy = t.clientY; tracking = true;
+let startX = 0, startY = 0, dragging = false, decided = false, horiz = false, w = 1;
+pager.addEventListener("touchstart", e => {
+  if(e.target.closest("input,textarea,select,button,a,label")){ dragging = false; return; }
+  const t = e.touches[0];
+  startX = t.clientX; startY = t.clientY; w = pager.clientWidth || 1;
+  dragging = true; decided = false; horiz = false;
 }, { passive:true });
-panelsEl.addEventListener("touchend", e => {
-  if(!tracking) return; tracking = false;
-  const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
-  if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) setTab(dx < 0 ? tab + 1 : tab - 1);
+pager.addEventListener("touchmove", e => {
+  if(!dragging) return;
+  const t = e.touches[0], dx = t.clientX - startX, dy = t.clientY - startY;
+  if(!decided){                                        // wait until intent is clear, then commit
+    if(Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+    decided = true; horiz = Math.abs(dx) > Math.abs(dy);
+    if(horiz){ track.classList.add("dragging"); setPagerHeight(panelMaxHeight()); }
+    else { dragging = false; return; }                 // vertical → let the page scroll
+  }
+  if(horiz){
+    e.preventDefault();
+    let tx = -tab * w + dx;
+    const min = -(track.children.length - 1) * w;
+    if(tx > 0) tx *= 0.35;                              // rubber-band past the edges
+    else if(tx < min) tx = min + (tx - min) * 0.35;
+    track.style.transform = `translateX(${tx}px)`;
+  }
+}, { passive:false });
+pager.addEventListener("touchend", e => {
+  if(!dragging) return;
+  dragging = false; track.classList.remove("dragging");
+  if(!horiz) return;
+  const dx = e.changedTouches[0].clientX - startX;
+  let target = tab;
+  if(dx <= -w * 0.18) target = tab + 1;                // easy to trigger: 18% of the width
+  else if(dx >= w * 0.18) target = tab - 1;
+  setTab(target);                                       // snaps forward or springs back
 }, { passive:true });
+
+window.addEventListener("resize", () => {
+  track.style.transition = "none";
+  track.style.transform = `translateX(-${tab * 50}%)`;
+  setPagerHeight();
+  requestAnimationFrame(() => { track.style.transition = ""; });
+});
 
 /* ---------- form open/close ---------- */
 function openForm(id){
